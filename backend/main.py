@@ -12,14 +12,12 @@ app = FastAPI(title="PaySafe UPI Fraud Detection API")
 # Utility functions
 # -----------------------------
 def load_csv_from_drive(file_id: str) -> pd.DataFrame:
-    """Download a CSV from Google Drive using file ID."""
     url = f"https://drive.google.com/uc?id={file_id}"
     response = requests.get(url)
     response.raise_for_status()
     return pd.read_csv(StringIO(response.text))
 
 def load_model_from_drive(file_id: str):
-    """Download a serialized model (joblib) from Google Drive using file ID."""
     url = f"https://drive.google.com/uc?id={file_id}"
     response = requests.get(url)
     response.raise_for_status()
@@ -79,37 +77,44 @@ def predict(features: dict):
     try:
         print("Received raw input:", features)
 
-        # Step 1: Preprocess input to match feature_cols
+        # Full feature engineering
         amount = features["amount"]
         log_amount = np.log1p(amount)
         hour = features.get("Hour", 14)
-        is_night = 1 if hour < 6 or hour > 22 else 0
         daily_txn = features.get("DailyTxnCount", 3)
         orig_txn = features.get("OrigTxnCount", 2)
         dest_txn = features.get("DestTxnCount", 2)
         txn_window = features.get("TxnCountWindow", 5)
+
+        # Optional engineered features
+        is_night = 1 if hour < 6 or hour > 22 else 0
         rule_high = features.get("RuleHighValue", 0)
         rule_rapid = features.get("RuleRapidFire", 0)
         type_encoded = 1 if features.get("transaction_type") == "upi" else 0
 
-        # Step 2: Build feature vector
-        X = pd.DataFrame([{
+        # Build full feature dictionary
+        full_features = {
             "amount": amount,
             "LogAmount": log_amount,
             "Hour": hour,
-            "IsNight": is_night,
             "DailyTxnCount": daily_txn,
             "OrigTxnCount": orig_txn,
             "DestTxnCount": dest_txn,
             "TxnCountWindow": txn_window,
+            "IsNight": is_night,
             "RuleHighValue": rule_high,
             "RuleRapidFire": rule_rapid,
             "Type_encoded": type_encoded
-        }])
+        }
 
+        # Filter to match scaler's expected columns
+        expected_cols = scaler.feature_names_in_
+        filtered_features = {col: full_features[col] for col in expected_cols}
+
+        X = pd.DataFrame([filtered_features])
         print("Final input to model:", X)
 
-        # Step 3: Predict
+        # Predict
         X_scaled = scaler.transform(X)
         anomaly_score = isolation_forest.decision_function(X_scaled)
         prediction = xgb_model.predict(X_scaled)
