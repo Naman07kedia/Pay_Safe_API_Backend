@@ -102,4 +102,8 @@ def predict(features: dict):
     return {
         "prediction": int(prediction[0]),
         "anomaly_score": float(anomaly_score[0])
+
     }
+
+print("Received features:", features)
+print("Expected columns:", scaler.get_feature_names_out())
