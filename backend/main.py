@@ -77,44 +77,37 @@ def predict(features: dict):
     try:
         print("Received raw input:", features)
 
-        # Full feature engineering
+        # Step 1: Preprocess input to match model's expected 11 features
         amount = features["amount"]
         log_amount = np.log1p(amount)
         hour = features.get("Hour", 14)
+        is_night = 1 if hour < 6 or hour > 22 else 0
         daily_txn = features.get("DailyTxnCount", 3)
         orig_txn = features.get("OrigTxnCount", 2)
         dest_txn = features.get("DestTxnCount", 2)
         txn_window = features.get("TxnCountWindow", 5)
-
-        # Optional engineered features
-        is_night = 1 if hour < 6 or hour > 22 else 0
         rule_high = features.get("RuleHighValue", 0)
         rule_rapid = features.get("RuleRapidFire", 0)
         type_encoded = 1 if features.get("transaction_type") == "upi" else 0
 
-        # Build full feature dictionary
-        full_features = {
+        # Step 2: Build exact feature vector
+        X = pd.DataFrame([{
             "amount": amount,
             "LogAmount": log_amount,
             "Hour": hour,
+            "IsNight": is_night,
             "DailyTxnCount": daily_txn,
             "OrigTxnCount": orig_txn,
             "DestTxnCount": dest_txn,
             "TxnCountWindow": txn_window,
-            "IsNight": is_night,
             "RuleHighValue": rule_high,
             "RuleRapidFire": rule_rapid,
             "Type_encoded": type_encoded
-        }
+        }])
 
-        # Filter to match scaler's expected columns
-        expected_cols = scaler.feature_names_in_
-        filtered_features = {col: full_features[col] for col in expected_cols}
-
-        X = pd.DataFrame([filtered_features])
         print("Final input to model:", X)
 
-        # Predict
+        # Step 3: Predict
         X_scaled = scaler.transform(X)
         anomaly_score = isolation_forest.decision_function(X_scaled)
         prediction = xgb_model.predict(X_scaled)
