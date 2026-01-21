@@ -81,6 +81,8 @@ def hybrid_eval(rows: int = 10):
 # -----------------------------
 @app.post("/predict")
 def predict(features: dict):
+    print("Received features:", features)
+print("Expected columns:", scaler.get_feature_names_out())
     """
     Run fraud detection prediction using XGBoost model.
     Expects JSON with feature values.
@@ -105,5 +107,5 @@ def predict(features: dict):
 
     }
 
-print("Received features:", features)
-print("Expected columns:", scaler.get_feature_names_out())
+
+
