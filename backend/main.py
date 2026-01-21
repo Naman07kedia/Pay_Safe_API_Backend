@@ -1,5 +1,6 @@
 import os
 import requests
+import numpy as np
 import pandas as pd
 import joblib
 from io import StringIO, BytesIO
@@ -151,6 +152,7 @@ def predict(features: dict):
         "anomaly_score": float(anomaly_score[0])
 
     }
+
 
 
 
