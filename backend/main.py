@@ -82,14 +82,40 @@ def hybrid_eval(rows: int = 10):
 @app.post("/predict")
 def predict(features: dict):
     try:
-        print("Received features:", features)
+        print("Received raw input:", features)
 
-        X = pd.DataFrame([features])
-        print("Constructed DataFrame:", X)
+        # Step 1: Preprocess input
+        amount = features["amount"]
+        log_amount = np.log1p(amount)
+        hour = features.get("Hour", 14)  # or extract from timestamp
+        is_night = 1 if hour < 6 or hour > 22 else 0
+        daily_txn = features.get("DailyTxnCount", 3)
+        orig_txn = features.get("OrigTxnCount", 2)
+        dest_txn = features.get("DestTxnCount", 2)
+        txn_window = features.get("TxnCountWindow", 5)
+        rule_high = features.get("RuleHighValue", 0)
+        rule_rapid = features.get("RuleRapidFire", 0)
+        type_encoded = 1 if features.get("transaction_type") == "upi" else 0
 
+        # Step 2: Build feature vector
+        X = pd.DataFrame([{
+            "amount": amount,
+            "LogAmount": log_amount,
+            "Hour": hour,
+            "IsNight": is_night,
+            "DailyTxnCount": daily_txn,
+            "OrigTxnCount": orig_txn,
+            "DestTxnCount": dest_txn,
+            "TxnCountWindow": txn_window,
+            "RuleHighValue": rule_high,
+            "RuleRapidFire": rule_rapid,
+            "Type_encoded": type_encoded
+        }])
+
+        print("Final input to model:", X)
+
+        # Step 3: Predict
         X_scaled = scaler.transform(X)
-        print("Scaled input:", X_scaled)
-
         anomaly_score = isolation_forest.decision_function(X_scaled)
         prediction = xgb_model.predict(X_scaled)
 
@@ -125,6 +151,7 @@ def predict(features: dict):
         "anomaly_score": float(anomaly_score[0])
 
     }
+
 
 
 
