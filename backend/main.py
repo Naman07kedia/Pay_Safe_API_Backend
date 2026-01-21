@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 import joblib
 from io import StringIO, BytesIO
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 app = FastAPI(title="PaySafe UPI Fraud Detection API")
 
@@ -151,6 +151,7 @@ def predict(features: dict):
         "anomaly_score": float(anomaly_score[0])
 
     }
+
 
 
 
