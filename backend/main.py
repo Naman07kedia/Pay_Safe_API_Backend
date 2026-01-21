@@ -49,46 +49,40 @@ def root():
 
 @app.get("/preview")
 def preview(rows: int = 5):
-    """Preview first N rows of cleaned dataset."""
     return cleaned_data.head(rows).to_dict(orient="records")
 
 @app.get("/metrics")
 def get_metrics():
-    """Return metrics summary dataset."""
     return metrics_summary.to_dict(orient="records")
 
 @app.get("/shap/importance")
 def shap_importance(rows: int = 10):
-    """Return SHAP feature importance values."""
     return shap_feature_importance_bp.head(rows).to_dict(orient="records")
 
 @app.get("/shap/transactions")
 def shap_transactions(rows: int = 10):
-    """Return SHAP transaction values."""
     return shap_transaction_values.head(rows).to_dict(orient="records")
 
 @app.get("/shap/fraud_vs_nonfraud")
 def shap_fraud(rows: int = 10):
-    """Return SHAP fraud vs non-fraud breakdown."""
     return shap_fraud_vs_non_fraud.head(rows).to_dict(orient="records")
 
 @app.get("/hybrid_eval")
 def hybrid_eval(rows: int = 10):
-    """Return hybrid evaluation test results."""
     return hybrid_eval_test.head(rows).to_dict(orient="records")
 
 # -----------------------------
-# Example prediction endpoint
+# Prediction Endpoint
 # -----------------------------
 @app.post("/predict")
 def predict(features: dict):
     try:
         print("Received raw input:", features)
 
-        # Step 1: Preprocess input
+        # Step 1: Preprocess input to match feature_cols
         amount = features["amount"]
         log_amount = np.log1p(amount)
-        hour = features.get("Hour", 14)  # or extract from timestamp
+        hour = features.get("Hour", 14)
         is_night = 1 if hour < 6 or hour > 22 else 0
         daily_txn = features.get("DailyTxnCount", 3)
         orig_txn = features.get("OrigTxnCount", 2)
@@ -128,35 +122,4 @@ def predict(features: dict):
     except Exception as e:
         import traceback
         print("🔥 Internal error:", traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-    """
-    Run fraud detection prediction using XGBoost model.
-    Expects JSON with feature values.
-    """
-    import numpy as np
-
-    # Convert input dict to DataFrame
-    X = pd.DataFrame([features])
-
-    # Scale features
-    X_scaled = scaler.transform(X)
-
-    # Isolation Forest anomaly score
-    anomaly_score = isolation_forest.decision_function(X_scaled)
-
-    # XGBoost prediction
-    prediction = xgb_model.predict(X_scaled)
-
-    return {
-        "prediction": int(prediction[0]),
-        "anomaly_score": float(anomaly_score[0])
-
-    }
-
-
-
-
-
-
-
-
+        raise HTTPException(status_code=500, detail=str(e))
