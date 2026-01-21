@@ -81,8 +81,27 @@ def hybrid_eval(rows: int = 10):
 # -----------------------------
 @app.post("/predict")
 def predict(features: dict):
-    print("Received features:", features)
-    print("Expected columns:", scaler.get_feature_names_out())
+    try:
+        print("Received features:", features)
+
+        X = pd.DataFrame([features])
+        print("Constructed DataFrame:", X)
+
+        X_scaled = scaler.transform(X)
+        print("Scaled input:", X_scaled)
+
+        anomaly_score = isolation_forest.decision_function(X_scaled)
+        prediction = xgb_model.predict(X_scaled)
+
+        return {
+            "prediction": int(prediction[0]),
+            "anomaly_score": float(anomaly_score[0])
+        }
+
+    except Exception as e:
+        import traceback
+        print("🔥 Internal error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Internal Server Error")
     """
     Run fraud detection prediction using XGBoost model.
     Expects JSON with feature values.
@@ -106,6 +125,7 @@ def predict(features: dict):
         "anomaly_score": float(anomaly_score[0])
 
     }
+
 
 
 
